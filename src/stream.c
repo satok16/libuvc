@@ -1244,7 +1244,22 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
     }
     if(i == LIBUVC_NUM_TRANSFER_BUFS )
       break;
+
+#if 1
+    struct timespec time_to_wait;
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    time_to_wait.tv_sec = now.tv_sec + 3;
+    time_to_wait.tv_nsec = now.tv_usec * 1000;
+    int retv = pthread_cond_timedwait(&strmh->cb_cond, &strmh->cb_mutex, &time_to_wait);
+    if (retv) {
+      UVC_DEBUG("Failed to wait!  Force removing transfers.  (Memory leak caused.)");
+      strmh->transfers[i] = NULL;
+    }
+#else
     pthread_cond_wait(&strmh->cb_cond, &strmh->cb_mutex);
+#endif
+
   } while(1);
   // Kick the user thread awake
   pthread_cond_broadcast(&strmh->cb_cond);
